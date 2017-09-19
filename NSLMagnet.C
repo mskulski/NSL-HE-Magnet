@@ -340,34 +340,24 @@ void zcalc(Double_t mc,Double_t vc,Double_t fc,Double_t qi,Int_t v,Int_t j1,Doub
 	Double_t vy = vc*cs(theta0);
 	Double_t vx0 = vc*sn(theta0)*cs(phi0);
 	Double_t t0 = -asn(vx0/vp)/fc;
+	Double_t w0 = -fc*t0;
 	Double_t L = 2*1.016;
 
+	Double_t p0 = tn(phi0);
 	Double_t p1 = vp/fc;
 	Double_t p2 = tn(am);
- 	Double_t p31 = 3.048 - 1.016*(1+tn(am)+tn(phi0)) + x0*tn(phi0);
-  	Double_t p32 = p31/(tn(phi0)+tn(am));
-	Double_t p3 = p32 + p1*cs(-fc*t0);
-	Double_t p4 = -p32*tn(am) - 1.016*(1+tn(am)) - p1*sn(-fc*t0);
-	Double_t oo = 2*(atn((sqrt(p1*p1*p2*p2 + p1*p1 - p2*p2*p4*p4 - 2*p2*p3*p4 - p3*p3) - p1*p2)/(p1 + p2*p4 + p3)));
+ 	Double_t p31 = 3.048 - 1.016*(1+p2+p0) + x0*p0;
+  	Double_t p32 = p31/(p0+p2);
+	Double_t p3 = p32 + p1*cs(w0);
+	Double_t p4 = -p32*p2 - 1.016*(1+p2) - p1*sn(w0);
+	Double_t oo = 2*(atn((sqrt(p1*p1*(p2*p2+1) - pow(p2*p4+p3,2)) - p1*p2)/(p1 + p2*p4 + p3)));
 	
 	Double_t vzf = vp*cs(oo);
 	Double_t vxf = vp*sn(oo);
 	Double_t phif = atn(vzf/vxf);
-
-	if(Vc==0)
-	{
-	Int_t stepstot = steps+1;
-	for(int s=0;s<stepstot;s++)
-	{
-		z[v].push_back(p4 + p1*sn(s*oo/steps));
-		x[v].push_back(p3 - p1*cs(s*oo/steps));
-	}
-	}
 	
 	Double_t x2 = p3 - p1*cs(oo);
 	Double_t z2 = p4 + p1*sn(oo) + (0.0508*tn(am)-x2)*tn(phif);
-	
-	if(Vc==0){zo[v].push_back(z2);}
 	
 	Double_t Lf = 29.5*0.0254;
 	Double_t t = Lf/vxf;
@@ -375,18 +365,27 @@ void zcalc(Double_t mc,Double_t vc,Double_t fc,Double_t qi,Int_t v,Int_t j1,Doub
 	
 	if(Vc==0)
 	{
-	Int_t stepstot = steps+1;
-	for(int s=0;s<stepstot;s++)
+		Int_t stepstot = steps+1;
+		for(int s=0;s<stepstot;s++)
+		{
+			z[v].push_back(p4 + p1*sn(s*oo/steps));
+			x[v].push_back(p3 - p1*cs(s*oo/steps));
+			z[v].push_back(z2 + vzf*t*s/steps);
+			x[v].push_back(vxf*t*s/steps);
+		}
+		zo[v].push_back(z2);
+		zf[v].push_back(zmfc);
+	}
+
+	
+	if(Vc == Vold)
 	{
-		z[v].push_back(z2 + vzf*t*s/steps);
-		x[v].push_back(vxf*t*s/steps);
+		cnt++;
 	}
+	else
+	{
+		Vold = Vc;
 	}
-	
-	if(Vc==0){zf[v].push_back(zmfc);}
-	
-	if(Vc == Vold){cnt++;}
-	else{Vold = Vc;}
 	
 	if(ab(zmfc-msign*0.0508) <= 1e-12 || cnt > 10)
 	{

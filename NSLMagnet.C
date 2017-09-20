@@ -209,6 +209,13 @@ void NSLMagnet(Double_t TV,Double_t q1,Double_t q,TString el,Double_t m0,Double_
 		mass12[s]->SetAxisRange(0,1.25,"Y");
 	}
 	
+	TImage *img = TImage::Create();
+	img->FromPad(mass);
+	stringstream imgname;
+	imgname << m_im << ".png";
+	TString imgf = imgname.str();
+	img->WriteImage(imgf);
+	
 	Double_t min2 = 1e6;
 	Double_t max2 = -1e6;
 	
@@ -262,6 +269,13 @@ void NSLMagnet(Double_t TV,Double_t q1,Double_t q,TString el,Double_t m0,Double_
 		mass123[s]->SetAxisRange(0,1.25*maxy1,"Y");
 	}
 	
+	TImage *img2 = TImage::Create();
+	img2->FromPad(mass2);
+	stringstream imgname2;
+	imgname2 << m_im << "_V.png";
+	TString imgf2 = imgname2.str();
+	img2->WriteImage(imgf2);
+
 	TCanvas* mass3 = new TCanvas("Scan","Scan",3600,2700);
 	
 	for(int s=0;s<icount;s++)
@@ -277,7 +291,7 @@ void NSLMagnet(Double_t TV,Double_t q1,Double_t q,TString el,Double_t m0,Double_
 	mg->SetMaximum(0.4);
 	mg->SetMinimum(-1.25);
 	
-	TF1* mag1 = new TF1("mag1","-1.016 - tan(25*TMath::Pi()/180)*(1+x)",-1.266,-0.766);
+	TF1* mag1 = new TF1("mag1","-1.016 - tan(25*TMath::Pi()/180)*(1.016+x)",-1.266,-0.766);
 	mag1->SetLineColor(1);
 	mag1->Draw("same");
 	TF1* mag2 = new TF1("mag2","-x/tan(25*TMath::Pi()/180)",-tan(am)*0.25,tan(am)*0.25);
@@ -287,20 +301,6 @@ void NSLMagnet(Double_t TV,Double_t q1,Double_t q,TString el,Double_t m0,Double_
 	mags1->Draw("same");
 	TF1* mags2 = new TF1("mags2","-0.0508",0.725,0.775);
 	mags2->Draw("same");
-	
-	TImage *img = TImage::Create();
-	img->FromPad(mass);
-	stringstream imgname;
-	imgname << m_im << ".png";
-	TString imgf = imgname.str();
-	img->WriteImage(imgf);
-	
-	TImage *img2 = TImage::Create();
-	img2->FromPad(mass2);
-	stringstream imgname2;
-	imgname2 << m_im << "_V.png";
-	TString imgf2 = imgname2.str();
-	img2->WriteImage(imgf2);
 
 	TImage *img3 = TImage::Create();
 	img3->FromPad(mass3);
@@ -351,16 +351,17 @@ void zcalc(Double_t mc,Double_t vc,Double_t fc,Double_t qi,Int_t v,Int_t j1,Doub
 	Double_t p3 = p32 + p1*cs(w0);
 	Double_t p4 = -p32*p2 - 1.016*(1+p2) - p1*sn(w0);
 	Double_t oo = 2*(atn((sqrt(p1*p1*(p2*p2+1) - pow(p2*p4+p3,2)) - p1*p2)/(p1 + p2*p4 + p3)));
+	Double_t wm = oo-w0;
 	
 	Double_t vzf = vp*cs(oo);
 	Double_t vxf = vp*sn(oo);
 	Double_t phif = atn(vzf/vxf);
 	
+	Double_t z2 = p4 + p1*sn(oo);
 	Double_t x2 = p3 - p1*cs(oo);
-	Double_t z2 = p4 + p1*sn(oo) + (0.0508*tn(am)-x2)*tn(phif);
 	
 	Double_t Lf = 29.5*0.0254;
-	Double_t t = Lf/vxf;
+	Double_t t = (Lf-x2)/vxf;
 	Double_t zmfc = z2 + vzf*t;
 	
 	if(Vc==0)
@@ -368,16 +369,15 @@ void zcalc(Double_t mc,Double_t vc,Double_t fc,Double_t qi,Int_t v,Int_t j1,Doub
 		Int_t stepstot = steps+1;
 		for(int s=0;s<stepstot;s++)
 		{
-			z[v].push_back(p4 + p1*sn(s*oo/steps));
-			x[v].push_back(p3 - p1*cs(s*oo/steps));
+			z[v].push_back(p4 + p1*sn(s*wm/steps+w0));
+			x[v].push_back(p3 - p1*cs(s*wm/steps+w0));
 			z[v].push_back(z2 + vzf*t*s/steps);
-			x[v].push_back(vxf*t*s/steps);
+			x[v].push_back(x2 + vxf*t*s/steps);
 		}
 		zo[v].push_back(z2);
 		zf[v].push_back(zmfc);
 	}
 
-	
 	if(Vc == Vold)
 	{
 		cnt++;

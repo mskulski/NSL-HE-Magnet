@@ -34,6 +34,15 @@ Double_t theta0;
 Double_t x0;
 Double_t y0;
 
+Double_t maxy = 0;
+Double_t maxy1 = 0;
+
+Double_t min = 1;
+Double_t max = -1;
+
+Double_t min2 = 1e6;
+Double_t max2 = -1e6;
+
 vector<vector<Double_t>> z(6);
 vector<vector<Double_t>> x(6);
 vector<vector<Double_t>> zo(6);
@@ -67,6 +76,13 @@ void NSLMagnet(Double_t TV,Double_t q1,Double_t q,TString el,Double_t m0,Double_
 	Double_t amin = 1.01;
 	Double_t amax = 0;
 	Int_t m0max;
+	
+	maxy = 0;
+	maxy1 = 0;
+	min = 1;
+	max = -1;
+	min2 = 1e6;
+	max2 = -1e6;
 	
 	TH1F *mass1[6];
 	TH1F *mass12[6];
@@ -110,23 +126,6 @@ void NSLMagnet(Double_t TV,Double_t q1,Double_t q,TString el,Double_t m0,Double_
 	}
 	itable.close();
 	
-	for(int s=0;s<icount;s++)
-	{	
-		if(s==m0in)
-		{
-			continue;
-		}
-		if(abun[s]<amin)
-		{
-			amin=abun[s];
-		}
-		if(abun[s]>amax)
-		{	
-			amax=abun[s];
-			m0max=s;
-		}
-	}
-	
 	Double_t e0 = TV*((m0/(m0+m_add))+(q1/2)+(q/2));
 	Double_t mp=m0;
 	
@@ -147,13 +146,25 @@ void NSLMagnet(Double_t TV,Double_t q1,Double_t q,TString el,Double_t m0,Double_
 			Double_t B = (1/1.016)*sqrt(2*m0*e0/(q*q));
 			Double_t f = q*B/mp;
 			zcalc(mp,v0,f,q,s,j,m0);
+			
+			if(j==0)
+			{
+				if(abun[s]<amin)
+				{
+					amin=abun[s];
+				}
+				if(abun[s]>amax)
+				{	
+					amax=abun[s];
+					m0max=s;
+				}		
+			}
 		}
 		ntot++;
 	}
 
-	Double_t min = *min_element(zf[0].begin(),zf[0].end());
-	Double_t max = *max_element(zf[icount-1].begin(),zf[icount-1].end());
 	Double_t nbins = (max-min)/0.0001 + 1;
+	Double_t nbins2 = abs(max2-min2)+1;
 
 	TCanvas* mass = new TCanvas("Scan","Scan",3600,2700);
 	
@@ -161,12 +172,32 @@ void NSLMagnet(Double_t TV,Double_t q1,Double_t q,TString el,Double_t m0,Double_
 	{
 		mass1[s]=new TH1F(names[s],"",nbins,min,max);
 		mass12[s]=new TH1F(names[s],"",nbins,min,max);
+		mass123[s]=new TH1F(names[s],"",nbins2,min2,max2);
+		
+		mass1[s]->SetFillColorAlpha(18+5*s,0.8);
+		mass12[s]->SetFillColorAlpha(18+5*s,0.8);
+		mass123[s]->SetFillColorAlpha(18+5*s,0.8);
 		
 		for(int k=0;k<zf[s].size();k++)
 		{	
 			mass1[s]->Fill(zo[s][k]);
 			mass12[s]->Fill(zf[s][k]);
 		}
+		
+		if(s==m0max)
+		{
+			maxy = mass1[m0max]->GetMaximum();
+		}
+		
+		for(int k=0;k<V[s].size();k++)
+		{	
+			if(s!=m0in)
+			{
+				mass123[s]->Fill(V[s][k]);
+			}
+		}
+		
+		Double_t maxy1 = mass123[m0max]->GetMaximum();
 		
 		Double_t amult = abun[s]/amin;
 		mass1[s]->Scale(amult);
@@ -177,9 +208,6 @@ void NSLMagnet(Double_t TV,Double_t q1,Double_t q,TString el,Double_t m0,Double_
 		namel << mround << names[s] << ":    " << mass1[s]->GetMean() << ",    "  << mass12[s]->GetMean();
 		TString namel1 = namel.str();
 		legend->AddEntry(mass1[s],namel1,"f");
-		
-		mass1[s]->SetFillColorAlpha(18+5*s,0.8);
-		mass12[s]->SetFillColorAlpha(18+5*s,0.8);
 		
 		if(s==0)
 		{
@@ -195,8 +223,6 @@ void NSLMagnet(Double_t TV,Double_t q1,Double_t q,TString el,Double_t m0,Double_
 		mass1[s]->Draw("SAME");
 	}
 	legend->Draw();
-
-	Double_t maxy = mass1[m0max]->GetMaximum();
 	
 	for(int s=0;s<icount;s++)
 	{
@@ -216,32 +242,11 @@ void NSLMagnet(Double_t TV,Double_t q1,Double_t q,TString el,Double_t m0,Double_
 	TString imgf = imgname.str();
 	img->WriteImage(imgf);
 	
-	Double_t min2 = 1e6;
-	Double_t max2 = -1e6;
-	
-	for(int s=0;s<icount;s++)
-	{
-		Double_t mint = *min_element(V[s].begin(),V[s].end());
-		Double_t maxt = *max_element(V[s].begin(),V[s].end());
-		if(mint < min2){min2 = mint;}
-		if(maxt > max2){max2 = maxt;}
-	}
-	Double_t nbins2 = abs(max2-min2)+1;
-	
 	TCanvas* mass2 = new TCanvas("Scan","Scan",3600,2700);
 	
 	for(int s=0;s<icount;s++)
 	{
-		mass123[s]=new TH1F(names[s],"",nbins2,min2,max2);
-		mass123[s]->SetFillColorAlpha(18+5*s,0.8);
-		
-		for(int k=0;k<V[s].size();k++)
-		{	
-			if(s!=m0in)
-			{
-				mass123[s]->Fill(V[s][k]);
-			}
-		}
+
 		
 		stringstream namel;
 		Int_t mround = TMath::Nint(m[s]/mu);
@@ -262,7 +267,6 @@ void NSLMagnet(Double_t TV,Double_t q1,Double_t q,TString el,Double_t m0,Double_
 		else{mass123[s]->Draw("SAME");}
 	}
 	legend1->Draw();	
-	Double_t maxy1 = mass123[m0max]->GetMaximum();
 	
 	for(int s=0;s<icount;s++)
 	{
@@ -376,6 +380,9 @@ void zcalc(Double_t mc,Double_t vc,Double_t fc,Double_t qi,Int_t v,Int_t j1,Doub
 		}
 		zo[v].push_back(z2);
 		zf[v].push_back(zmfc);
+		
+		if(zmfc>max){max=zmfc;}
+		if(zmfc<min){min=zmfc;}
 	}
 
 	if(Vc == Vold)
@@ -390,6 +397,8 @@ void zcalc(Double_t mc,Double_t vc,Double_t fc,Double_t qi,Int_t v,Int_t j1,Doub
 	if(ab(zmfc-msign*0.0508) <= 1e-12 || cnt > 10)
 	{
 		V[v].push_back(Vc/1000);
+		if(Vc<min2*1000){min2=Vc/1000;}
+		if(Vc>max2*1000){max2=Vc/1000;}
 		breakc = 1;
 	}
 	else if(zmfc-msign*0.0508 > 0)
